@@ -28,15 +28,21 @@ public:
     Modem(HardwareSerial& modemSerialConn, HardwareSerial& deviceSerialConn, int bRate);
 	
 	void Init();
-	bool isInitialized();
-
 	void DeInit();
+	
+
+	
+	
 	
 
 	void Connect();
 
 
 private:
+
+	void WaitForResponse(int bufferLen, char response[], unsigned long timeoutTime);
+
+	void ModemRDYCheck();
 
 	void SendAT(const char* cmd);
 
@@ -47,7 +53,11 @@ private:
 	void GetCGREG(CGREG* returnState);
 
 
-	bool initializedComms = false;
+
+	
+	bool RDY = false;
+
+
 	int baudRate;
 
 	char APN[];
