@@ -26,6 +26,31 @@ Modem::Modem(HardwareSerial& modemSerialConn, HardwareSerial& deviceSerialConn, 
     baudRate = bRate;
 }
 
+void Modem::ConnectGPRS()
+{
+    //SendCmdAndWait("AT+CSTT=\"internet\"");
+    //SendCmdAndWait("AT+CSTT?");
+    SetCFUN(1);
+
+
+
+}
+
+
+void Modem::SetCFUN(int val)
+{
+    SendAT("AT+CFUN=1");    
+}
+
+void Modem::GetCGREG(CGREG* returnState)
+{
+
+
+}
+
+
+
+
 void Modem::Init()
 {
     RDY = false;
@@ -67,11 +92,8 @@ void Modem::Init()
             _devicePort->print("timeout_");
             return;
         }
-    }
-    
-            
-    _devicePort->print("done\n");
-       
+    }            
+    _devicePort->print("done\n");       
 }
 
 void Modem::DeInit()
@@ -119,6 +141,8 @@ void Modem::ModemRDYCheck()
     //_devicePort->println(responseBuffer);
 
 }
+
+
 
 //When this gets run, it copies all the available chars, up to the length of bufferLen into repsonse
 void Modem::WaitForResponse(int bufferLen, char response[], unsigned long timeoutTime)
@@ -187,11 +211,7 @@ void Modem::WaitForResponse(int bufferLen, char response[], unsigned long timeou
 }
 
 
-void Modem::Connect()
-{
-    //SendCmdAndWait("AT+CSTT=\"internet\"");
-    SendCmdAndWait("AT+CSTT?");
-}
+
 
 
 
@@ -269,11 +289,7 @@ void Modem::SendCmdAndWait(const char* cmd)
     _devicePort->write(endline);
 }
 
-void Modem::GetCGREG(CGREG* returnState)
-{
 
-
-}
 
 
 

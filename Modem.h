@@ -31,14 +31,13 @@ public:
 	void DeInit();
 	
 
-	
-	
-	
-
-	void Connect();
+	void ConnectGPRS();
 
 
 private:
+
+
+	void SetCFUN(int val);
 
 	void WaitForResponse(int bufferLen, char response[], unsigned long timeoutTime);
 
