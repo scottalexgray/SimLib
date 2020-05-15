@@ -1,9 +1,8 @@
 #include "Modem.h"
 #include <Wire.h>
 #include <Arduino.h>
-//#include <SoftwareSerial.h>
+#include <string>
 
-// TTGO T-Call pins
 #define MODEM_RST            5
 #define MODEM_PWKEY          4
 #define MODEM_POWER_ON       23
@@ -12,85 +11,169 @@
 #define I2C_SDA              21
 #define I2C_SCL              22
 
-//Serial AT commands defining
-//#define SerialAT Serial1
+#define endline "\r\n\0"
 
 
-Modem::Modem(HardwareSerial& modemPort,Stream& devicePort, char board[], char APN[], char PIN[])
+
+
+
+Modem::Modem(HardwareSerial& modemSerialConn, HardwareSerial& deviceSerialConn, int bRate)
 {
-    //SoftwareSerial Serial1(26, 27); // RX, TX
-    _modemPort = &modemPort;
-    _devicePort = &devicePort;
+    //set the serial streams to the user specified streams    
+    _modemPort = &modemSerialConn;
+    _devicePort = &deviceSerialConn;
+    baudRate = bRate;
+}
 
-	TwoWire I2CPower = TwoWire(0);
+void Modem::Init()
+{
+    // I2C for SIM800 (to keep it running when powered from battery)//not sure if nessesary
+    TwoWire I2CPower = TwoWire(0);
 
-    // Set modem reset, enable, power pins (Specifically for TTGO ESP32 SIM800L)
+    //_devicePort->begin(baudRate);
+
+    // Set modem reset, enable, power pins
     pinMode(MODEM_PWKEY, OUTPUT);
     pinMode(MODEM_RST, OUTPUT);
     pinMode(MODEM_POWER_ON, OUTPUT);
+
+    _devicePort->print("Initializing modem...");
+
+    //can you initialize the modem, and then turn it on and still get it to work?
+
+    //digitalWrite(MODEM_PWKEY, HIGH);
     digitalWrite(MODEM_PWKEY, LOW);
+    //delay(1200);
+    //digitalWrite(MODEM_PWKEY, HIGH);
+
     digitalWrite(MODEM_RST, HIGH);
     digitalWrite(MODEM_POWER_ON, HIGH);
+    
 
     // Set GSM module baud rate and UART pins
-    _modemPort->begin(115200, SERIAL_8N1, MODEM_RX, MODEM_TX);
-    //_serialPort->write("AT\r\n");
-    _devicePort->write("HEEEEELLLLLOOOOOO");
+    _modemPort->begin(baudRate, SERIAL_8N1, MODEM_RX, MODEM_TX);   
+    while (!_modemPort)
+    {
+
+    }
+
+    //delay(6000);
+
+    initializedComms = true;
+    _devicePort->print("done\n");
     
-    delay(3000);
-
 }
 
-int Modem::CIPSTATUS()
+void Modem::DeInit()
 {
-    _devicePort->write("HEEEEELLLLLOOOOOO");
-    int ret = sendCmdAndWaitForResp("AT\r\n", "OK", DEFAULT_TIMEOUT);
-    return ret;
+    _devicePort->print("De-initializing modem...");
+    //as per the manual
+    digitalWrite(MODEM_PWKEY, HIGH);
+    digitalWrite(MODEM_PWKEY, LOW);
+    delay(1500);
+    digitalWrite(MODEM_PWKEY, HIGH);
+    //turn off things that were on
+    digitalWrite(MODEM_RST, LOW);
+    digitalWrite(MODEM_POWER_ON, LOW);
+
+    //disconnect from the serial connection
+    _modemPort->end();
+
+
+    initializedComms = false;
+    delay(500);
+    _devicePort->print("done\n");
 }
 
-void Modem::sendCmd(const char* cmd)
+void Modem::Connect()
+{
+    //SendCmdAndWait("AT+CSTT=\"internet\"");
+    SendCmdAndWait("AT+CSTT?");
+}
+
+bool Modem::isInitialized()
+{
+    return initializedComms;
+}
+
+
+
+void Modem::SendAT(const char* cmd)
 {
     _modemPort->write(cmd);
+    _modemPort->write(endline);
+    _modemPort->flush();
+    delay(1000);
 }
 
-int Modem::sendATTest(void)
+void Modem::removeCmd(char inputBuffer[], const char* cmd, char returnBuffer[], int returnBufferSize)
 {
-    int ret = sendCmdAndWaitForResp("AT\r\n", "OK", DEFAULT_TIMEOUT);
-    return ret;
+    int returnIndex = 0;
+    for (int i = (strlen(cmd) + 3); i < strlen(inputBuffer); i++)
+    {
+        returnBuffer[returnIndex] = inputBuffer[i];
+        returnIndex++;
+        if (returnIndex == (returnBufferSize - 1) || i == (strlen(inputBuffer) - 1))
+        {
+            //SerialMon.println("Adding Null Character");
+            returnBuffer[returnIndex] = '\0';
+            break;
+        }
+    }
 }
 
-int Modem::waitForResp(const char* resp, unsigned int timeout)
+void Modem::SendCmdAndWait(const char* cmd)
 {
-    int len = strlen(resp);
-    int sum = 0;
-    unsigned long timerStart, timerEnd;
-    timerStart = millis();
+    //send cmd
+    SendAT(cmd);
+    //now wait 
+    unsigned int bufferLen = 100;
+    char responseBuffer[bufferLen];
+    int responseIndex = 0;
 
-    while (1) {
-        if (_modemPort->available()) {
+    for (int i = 0; i < bufferLen; i++)
+    {
+        if (_modemPort->available())
+        {
             char c = _modemPort->read();
-            sum = (c == resp[sum]) ? sum + 1 : 0;
-            if (sum == len)break;
+            if (c == '\n')
+            {
+                responseBuffer[i] = ' ';
+            }
+            else if (c == '\r')
+            {
+                responseBuffer[i] = ' ';
+            }
+            else
+            {
+                responseBuffer[i] = c;
+            }
         }
-        timerEnd = millis();
-        if (timerEnd - timerStart > 1000 * timeout) {
-            return -1;
+        else
+        {
+            responseBuffer[i] = '\0';
+            responseBuffer[i - 1] = '\0';
+            responseBuffer[i - 2] = '\0';
+            //this is done because I know the last two characters are newline and carraige return  
+            break;
         }
     }
 
-    while (_modemPort->available()) {
-        _modemPort->read();
-    }
+    int responseOnlyBufferSize = 30;
+    char responseOnly[responseOnlyBufferSize];
 
-    return 0;
+    removeCmd(responseBuffer, cmd, responseOnly, responseOnlyBufferSize);
+    //SerialMon.println("Response:");
+    _devicePort->write(responseOnly);
+    _devicePort->write(endline);
 }
 
-
-
-int Modem::sendCmdAndWaitForResp(const char* cmd, const char* resp, unsigned timeout)
+void Modem::GetCGREG(CGREG* returnState)
 {
-    sendCmd(cmd);
-    return waitForResp(resp, timeout);
+
+
 }
+
+
 
 

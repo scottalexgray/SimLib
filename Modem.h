@@ -1,93 +1,61 @@
 /*
 	Modem.h - Library for using a SIM800L modem
 	Created by Scott A. Gray 2020
-	Released into the public domain
+	
 */
-#ifndef Modem_h
-#define Modem_h
-
-
-#define DEFAULT_TIMEOUT     5
-
-
-
 #include <Wire.h>
 #include <Arduino.h>
 
-class Modem
+
+enum CGREG
 {
-public:
-
-    /*
-    *
-    *
-    */
-
-
-    Modem(HardwareSerial& modemPort, Stream& devicePort, char board[], char APN[], char PIN[]);
-
-    int CIPSTATUS();
-
-
-    /* send AT command to SIM800 module
-     *  @param cmd  command array which will be send to GPRS module
-     */
-    void sendCmd(const char* cmd);
-
-    /*send "AT" to SIM800 module
-     */
-    int sendATTest(void);
-
-
-    /*  check SIM800 module response before time out
-     *  @param  *resp   correct response which SIM800 module will return
-     *  @param  *timeout    waiting seconds till timeout
-     *  @returns
-     *      0 on success
-     *      -1 on error
-     */
-    int waitForResp(const char* resp, unsigned timeout);
-
-    /** send AT command to GPRS module and wait for correct response
-     *  @param  *cmd    AT command which will be send to GPRS module
-     *  @param  *resp   correct response which GPRS module will return
-     *  @param  *timeout    waiting seconds till timeout
-     *  @returns
-     *      0 on success
-     *      -1 on error
-     */
-    int sendCmdAndWaitForResp(const char* cmd, const char* resp, unsigned timeout);
-
-
-
-
-
-
-private:
-	char APN[];
-	char PIN[];
-	HardwareSerial *_modemPort;
-    Stream* _devicePort;
-
-
+	NotRegistered = 0,
+	HomeRegistered = 1,
+	Searching = 2,
+	RegistrationDenied = 3,
+	Roaming = 5
 };
 
 
 
 
+class Modem
+{
+public:
+
+
+    //Constructor
+    Modem(HardwareSerial& modemSerialConn, HardwareSerial& deviceSerialConn, int bRate);
+	
+	void Init();
+	bool isInitialized();
+
+	void DeInit();
+	
+
+	void Connect();
+
+
+private:
+
+	void SendAT(const char* cmd);
+
+	void removeCmd(char inputBuffer[], const char* cmd, char returnBuffer[], int returnBufferSize);
+
+	void SendCmdAndWait(const char* cmd);
+
+	void GetCGREG(CGREG* returnState);
+
+
+	bool initializedComms = false;
+	int baudRate;
+
+	char APN[];
+	char PIN[];
+	HardwareSerial *_modemPort;
+    HardwareSerial* _devicePort;
+	//CGREG cgreg;
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-#endif
+};
