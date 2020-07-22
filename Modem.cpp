@@ -1,7 +1,12 @@
+/*
+    Modem.cpp - Library for using a SIM800L modem
+    Created by Scott Alexander Gray - 2020
+*/
 #include "Modem.h"
 #include <Wire.h>
 #include <Arduino.h>
 #include <string>
+
 
 #define MODEM_RST            5
 #define MODEM_PWKEY          4
@@ -26,12 +31,20 @@ Modem::Modem(HardwareSerial& modemSerialConn, HardwareSerial& deviceSerialConn, 
     baudRate = bRate;
 }
 
+
+
+void Modem::SetSimSettings(const char* apn, const char* pin)
+{
+    APN = apn;
+    PIN = apn;
+}
+
 void Modem::ConnectGPRS()
 {
     //SendCmdAndWait("AT+CSTT=\"internet\"");
     //SendCmdAndWait("AT+CSTT?");
     SetCFUN(1);
-
+    SetCSTT(APN);
 
 
 }
@@ -39,8 +52,42 @@ void Modem::ConnectGPRS()
 
 void Modem::SetCFUN(int val)
 {
-    SendAT("AT+CFUN=1");    
+    int bufferSize = 32; //length of buffer
+    char* full_cmd = new char[bufferSize]; //create buffer for command to be sent
+
+    const char* at_cmd = "AT+CFUN="; //AT command
+
+    char valChar[5]; //create buffer for char version of val
+    itoa(val, valChar, 10); //convert int to char array
+    
+    strcpy(full_cmd, at_cmd); //copy the base command to the buffer
+    strcat(full_cmd, valChar); //append the valChar to the cmd buffer
+    
+    //_devicePort->print("Command to be sent:\n");
+    //_devicePort->print(full_cmd);
+
+    SendAT(full_cmd);  //send command to the modem  
 }
+
+
+void Modem::SetCSTT(const char* apn)
+{
+    int bufferSize = 32; //length of buffer
+    char* full_cmd = new char[bufferSize]; //create buffer for command to be sent
+
+    const char* at_cmd = "AT+CSTT="; //AT command
+
+    strcpy(full_cmd, at_cmd); //copy the base command to the buffer
+    strcat(full_cmd, apn); //append the valChar to the cmd buffer
+
+    //_devicePort->print("Command to be sent:\n");
+    //_devicePort->print(full_cmd);
+
+    SendAT(full_cmd);  //send command to the modem  
+
+}
+
+
 
 void Modem::GetCGREG(CGREG* returnState)
 {

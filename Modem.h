@@ -1,7 +1,6 @@
 /*
 	Modem.h - Library for using a SIM800L modem
-	Created by Scott A. Gray 2020
-	
+	Created by Scott Alexander Gray - 2020	
 */
 #include <Wire.h>
 #include <Arduino.h>
@@ -27,11 +26,12 @@ public:
     //Constructor
     Modem(HardwareSerial& modemSerialConn, HardwareSerial& deviceSerialConn, int bRate);
 	
-	void Init();
+	void Init(); //initialise modem with power and comms etc
 	void DeInit();
 	
 
-	void ConnectGPRS();
+	void SetSimSettings(const char* apn, const char* pin); //set the APN and PIN of simcard
+	void ConnectGPRS(); //connect to the GPRS Network (IP INITIAL -> IP STATUS)
 
 
 private:
@@ -42,7 +42,7 @@ private:
 
 	//state = IP INITIAL
 
-	void SetCSTT(char APN[]); //AT+CSTT=APN //sets APN to use with the simcard, i.e. "internet"
+	void SetCSTT(const char* apn); //AT+CSTT=APN //sets APN to use with the simcard, i.e. "internet"
 
 	void SetCPIN(char pin[]); //AT+CPIN=pin //set the pincode for the simcard	
 
@@ -116,8 +116,8 @@ private:
 
 	int baudRate;
 
-	char APN[];
-	char PIN[];
+	const char* APN;
+	const char* PIN;
 	HardwareSerial *_modemPort;
     HardwareSerial* _devicePort;
 	//CGREG cgreg;
