@@ -15,6 +15,17 @@ enum CGREG
 	Roaming = 5
 };
 
+enum CIPSTATUS
+{
+	IPInitial = 0,
+	IPStart = 1,
+	IPConfig = 2,
+	IPGprsAct = 3,
+	IPStatus = 4,
+	IPProcessing = 5,
+	PDPDeact = 9
+};
+
 
 
 
@@ -22,6 +33,7 @@ class Modem
 {
 public:
 
+	
 
     //Constructor
     Modem(HardwareSerial& modemSerialConn, HardwareSerial& deviceSerialConn, int bRate);
@@ -33,6 +45,8 @@ public:
 	void SetSimSettings(const char* apn, const char* pin); //set the APN and PIN of simcard
 	void ConnectGPRS(); //connect to the GPRS Network (IP INITIAL -> IP STATUS)
 
+	//Other Commands useful for debugging
+	void GetCSQ();//AT+CSQ //gets signal strength
 
 private:
 
@@ -44,15 +58,15 @@ private:
 
 	void SetCSTT(const char* apn); //AT+CSTT=APN //sets APN to use with the simcard, i.e. "internet"
 
-	void SetCPIN(char pin[]); //AT+CPIN=pin //set the pincode for the simcard	
+	void SetCPIN(const char* pin); //AT+CPIN=pin //set the pincode for the simcard		
 
 	void GetCPIN(); //AT+CPIN? //gets the pin status of the simcard(does it still need a pin)
 
-	void GetCGREG(CGREG* returnState); //AT+CGREG? //is the sim registered on the network?	
+	void GetCGREG(); //AT+CGREG? //is the sim registered on the network?	
 
 	void SetCGATT(int val); //AT+CGATT=val //Attach to network 
 
-	void SetCGDCONT(int PDPNum, char ipMode[], char APN[]);//AT+CGDCONT=PDPNum,ipMode,APN //Set the PDP context
+	void SetCGDCONT(int PDPNum, const char* ipMode, const char* apn);//AT+CGDCONT=PDPNum,ipMode,APN //Set the PDP context
 
 	/*activate PDP context
 	* Command = AT+CGACT=state,cid
@@ -88,9 +102,9 @@ private:
 	
 	//Other Commands useful for debugging
 
-	//AT+COPS? //get network info
+	void GetCOPS();//AT+COPS? //get network info
 
-	//AT+CSQ //gets signal strength
+	
 
 	//AT+CIPSTATUS //Query current connection status and status of modem
 	
@@ -120,7 +134,10 @@ private:
 	const char* PIN;
 	HardwareSerial *_modemPort;
     HardwareSerial* _devicePort;
-	//CGREG cgreg;
+
+
+	CGREG cgreg;
+	CIPSTATUS cipstatus;
 
 
 

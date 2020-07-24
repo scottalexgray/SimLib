@@ -36,15 +36,20 @@ Modem::Modem(HardwareSerial& modemSerialConn, HardwareSerial& deviceSerialConn, 
 void Modem::SetSimSettings(const char* apn, const char* pin)
 {
     APN = apn;
-    PIN = apn;
+    PIN = pin;
 }
 
 void Modem::ConnectGPRS()
 {
     //SendCmdAndWait("AT+CSTT=\"internet\"");
     //SendCmdAndWait("AT+CSTT?");
-    SetCFUN(1);
-    SetCSTT(APN);
+    SetCFUN(1); //set the functionality of the modem
+    SetCSTT(APN); //set the sim access point name
+    SetCPIN(PIN); //set the sim pin
+    GetCPIN(); //get whether or not sim is ready with current sim pin
+    GetCGREG(); //get sim registered status
+    SetCGATT(1); //attach to gsm network
+    //SetCGDCONT(1, "IP", "internet"); //Not needed to connect to gprs (CSTT does this essentially)
 
 
 }
@@ -77,25 +82,147 @@ void Modem::SetCSTT(const char* apn)
 
     const char* at_cmd = "AT+CSTT="; //AT command
 
+    strcpy(full_cmd, at_cmd); //copy the base command to the buffer    
+    strcat(full_cmd, apn); //append the valChar to the cmd buffer    
+
+    SendAT(full_cmd);  //send command to the modem  
+}
+
+void Modem::SetCPIN(const char* pin)
+{
+    if (*pin == '\0')
+    {
+        //_devicePort->print("Found pin char to contain null character");        
+        return; //This skips sending a command if the pin is empty
+    }
+    //_devicePort->print("Didn't find null char");
+
+    int bufferSize = 32; //length of buffer
+    char* full_cmd = new char[bufferSize]; //create buffer for command to be sent
+
+    const char* at_cmd = "AT+CPIN="; //AT command
+
     strcpy(full_cmd, at_cmd); //copy the base command to the buffer
-    strcat(full_cmd, apn); //append the valChar to the cmd buffer
+    strcat(full_cmd, pin); //append the valChar to the cmd buffer
+
+    SendAT(full_cmd);  //send command to the modem  
+}
+
+void Modem::GetCPIN()
+{
+    int bufferSize = 32; //length of buffer
+    char* full_cmd = new char[bufferSize]; //create buffer for command to be sent
+
+    const char* at_cmd = "AT+CPIN=?"; //AT command
+
+    strcpy(full_cmd, at_cmd); //copy the base command to the buffer    
+
+    SendAT(full_cmd);  //send command to the modem  
+}
+
+
+void Modem::GetCGREG()
+{
+    int bufferSize = 32; //length of buffer
+    char* full_cmd = new char[bufferSize]; //create buffer for command to be sent
+
+    const char* at_cmd = "AT+CGREG=?"; //AT command
+
+    strcpy(full_cmd, at_cmd); //copy the base command to the buffer    
+
+    SendAT(full_cmd);  //send command to the modem
+
+    //For now a response isn't required
+
+}
+
+void Modem::SetCGATT(int val) //val can only be 1 or 0, 1 attaches, 0 detaches
+{
+    int bufferSize = 32; //length of buffer
+    char* full_cmd = new char[bufferSize]; //create buffer for command to be sent
+
+    const char* at_cmd = "AT+CGATT="; //AT command
+
+    char valChar[5]; //create buffer for char version of val
+    itoa(val, valChar, 10); //convert int to char array
+
+    strcpy(full_cmd, at_cmd); //copy the base command to the buffer
+    strcat(full_cmd, valChar); //append the valChar to the cmd buffer
+
 
     //_devicePort->print("Command to be sent:\n");
     //_devicePort->print(full_cmd);
 
     SendAT(full_cmd);  //send command to the modem  
-
 }
 
-
-
-void Modem::GetCGREG(CGREG* returnState)
+void Modem::SetCGDCONT(int PDPNum, const char* ipMode, const char* apn)
 {
+    int bufferSize = 32; //length of buffer
+    char* full_cmd = new char[bufferSize]; //create buffer for command to be sent
 
+    const char* at_cmd = "AT+CGDCONT="; //AT command
+
+    char pdpNum[5]; //create buffer for char version of PDPNum
+    itoa(PDPNum, pdpNum, 10); //convert int to char array
+
+    strcpy(full_cmd, at_cmd); //copy the base command to the buffer
+    strcat(full_cmd, pdpNum); //append the valChar to the cmd buffer
+    strcat(full_cmd, ",");
+    strcat(full_cmd, ipMode);
+    strcat(full_cmd, ",");
+    strcat(full_cmd, apn);
+
+    //_devicePort->print("Command to be sent:\n");
+    //_devicePort->print(full_cmd);
+
+    SendAT(full_cmd);  //send command to the modem 
 
 }
 
+void Modem::SetCGACT(int state, int cid)
+{
+}
 
+void Modem::GetCEER()
+{
+}
+
+void Modem::SetCIICR()
+{
+}
+
+void Modem::SetCIFSR()
+{
+}
+
+void Modem::GetCOPS()
+{
+    int bufferSize = 32; //length of buffer
+    char* full_cmd = new char[bufferSize]; //create buffer for command to be sent
+
+    const char* at_cmd = "AT+CGREG=?"; //AT command
+
+    strcpy(full_cmd, at_cmd); //copy the base command to the buffer    
+
+    SendAT(full_cmd);  //send command to the modem
+
+    //For now a response isn't required
+}
+
+void Modem::GetCSQ()
+{
+    int bufferSize = 32; //length of buffer
+    char* full_cmd = new char[bufferSize]; //create buffer for command to be sent
+
+    const char* at_cmd = "AT+CSQ"; //AT command
+
+    strcpy(full_cmd, at_cmd); //copy the base command to the buffer    
+
+    SendAT(full_cmd);  //send command to the modem
+
+    //For now a response isn't required
+}
 
 
 void Modem::Init()
@@ -191,6 +318,8 @@ void Modem::ModemRDYCheck()
 
 
 
+
+
 //When this gets run, it copies all the available chars, up to the length of bufferLen into repsonse
 void Modem::WaitForResponse(int bufferLen, char response[], unsigned long timeoutTime)
 {
@@ -257,21 +386,12 @@ void Modem::WaitForResponse(int bufferLen, char response[], unsigned long timeou
     strcpy(response, initialResponseBuffer);
 }
 
-
-
-
-
-
-
-
-
-
 void Modem::SendAT(const char* cmd)
 {
-    _modemPort->write(cmd);
-    _modemPort->write(endline);
+    _modemPort->write(cmd); //write command to stream
+    _modemPort->write(endline); //write endline character to stream to end stream
     _modemPort->flush();
-    delay(1000);
+    delay(1000); //not sure why this delay is here
 }
 
 void Modem::removeCmd(char inputBuffer[], const char* cmd, char returnBuffer[], int returnBufferSize)
