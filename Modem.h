@@ -48,6 +48,9 @@ public:
 	//Other Commands useful for debugging
 	void GetCSQ();//AT+CSQ //gets signal strength
 
+	enum CIPSTATUS GetCIPSTATUS();
+
+
 private:
 
 	//Comands used to tranverse the different CIPSTATUS states
@@ -106,19 +109,24 @@ private:
 
 	
 
-	//AT+CIPSTATUS //Query current connection status and status of modem
+	void RefreshCIPSTATUS();//AT+CIPSTATUS //Query current connection status and status of modem
 	
 
 
-	void WaitForResponse(int bufferLen, char response[], unsigned long timeoutTime);
+	void WaitForResponse(int bufferLen, char response[], unsigned long timeoutTime); //wait for a response from modem. At the moment only used for startup
 
 	void ModemRDYCheck();
 
-	void SendAT(const char* cmd);
+	void SendAT(const char* cmd); //send command
 
-	void removeCmd(char inputBuffer[], const char* cmd, char returnBuffer[], int returnBufferSize);
+	//remove command prefix from response buffer
+	void removeCmd(char inputBuffer[], const char* cmd, char returnBuffer[], int returnBufferSize); 
 
-	void SendCmdAndWait(const char* cmd);
+	//trim function
+	void trimChar(char inputChar[], char outputChar[], int outputBufferSize, int startIndex = 0, int endIndex = 0);
+
+
+	void SendCmdAndWait(const char* cmd, char returnBuffer[], int returnBufferSize, bool removeOKFromResponse, bool printResponse); //send command, wait for response and print response
 
 	
 
