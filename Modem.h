@@ -12,6 +12,7 @@ enum CGREG
 	HomeRegistered = 1,
 	Searching = 2,
 	RegistrationDenied = 3,
+	Unknown = 4,
 	Roaming = 5
 };
 
@@ -43,10 +44,14 @@ public:
 	
 
 	void SetSimSettings(const char* apn, const char* pin); //set the APN and PIN of simcard
-	void ConnectGPRS(); //connect to the GPRS Network (IP INITIAL -> IP STATUS)
+	void ConnectGPRSBlocking(); //connect to the GPRS Network (IP INITIAL -> IP STATUS)
 
 	//Other Commands useful for debugging
 	void GetCSQ();//AT+CSQ //gets signal strength
+
+	enum CGREG GetCGREG(); //AT+CGREG? //is the sim registered on the network?
+
+	void SetCGATT(int val); //AT+CGATT=val //Attach to network 
 
 	enum CIPSTATUS GetCIPSTATUS();
 
@@ -65,9 +70,9 @@ private:
 
 	void GetCPIN(); //AT+CPIN? //gets the pin status of the simcard(does it still need a pin)
 
-	void GetCGREG(); //AT+CGREG? //is the sim registered on the network?	
+		
 
-	void SetCGATT(int val); //AT+CGATT=val //Attach to network 
+	
 
 	void SetCGDCONT(int PDPNum, const char* ipMode, const char* apn);//AT+CGDCONT=PDPNum,ipMode,APN //Set the PDP context
 
@@ -108,7 +113,7 @@ private:
 	void GetCOPS();//AT+COPS? //get network info
 
 	
-
+	void RefreshCGREG();
 	void RefreshCIPSTATUS();//AT+CIPSTATUS //Query current connection status and status of modem
 	
 

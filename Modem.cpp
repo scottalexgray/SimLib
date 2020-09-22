@@ -39,7 +39,7 @@ void Modem::SetSimSettings(const char* apn, const char* pin)
     PIN = pin;
 }
 
-void Modem::ConnectGPRS()
+void Modem::ConnectGPRSBlocking()
 {
     //SendCmdAndWait("AT+CSTT=\"internet\"");
     //SendCmdAndWait("AT+CSTT?");
@@ -47,13 +47,22 @@ void Modem::ConnectGPRS()
     // Disabled to test SendCmdAndWait
     SetCFUN(1); //set the functionality of the modem
     SetCSTT(APN); //set the sim access point name
-    //SetCPIN(PIN); //set the sim pin
-    //GetCPIN(); //get whether or not sim is ready with current sim pin
-    //GetCGREG(); //get sim registered status
+    SetCPIN(PIN); //set the sim pin
+
+    _devicePort->print("\nWaiting For CGREG... ");
+    
+    while (cgreg != Roaming && cgreg != HomeRegistered)
+    {
+        RefreshCGREG();
+    }
+    _devicePort->print("Done");
+
+
+    
     SetCGATT(1); //attach to gsm network    
-    //SetCGACT(1, 1);    
-    //SetCIICR();
-    //SetCIFSR();
+    SetCGACT(1, 1);    
+    SetCIICR();
+    SetCIFSR();
     
 
 }
@@ -145,23 +154,60 @@ void Modem::GetCPIN()
     _devicePort->print(responseBuffer);
 }
 
-
-void Modem::GetCGREG()
+void Modem::RefreshCGREG()
 {
     int bufferSize = 32; //length of buffer
     char* full_cmd = new char[bufferSize]; //create buffer for command to be sent
 
-    const char* at_cmd = "AT+CGREG=?"; //AT command
+    const char* at_cmd = "AT+CGREG?"; //AT command
 
     strcpy(full_cmd, at_cmd); //copy the base command to the buffer    
 
     int responseLen = 16; //two characters and one null character
-    char responseBuffer[responseLen];
+    char wholeResponseBuffer[responseLen];
 
-    SendCmdAndWait(full_cmd, responseBuffer, responseLen, false, false);  //send command to the modem 
-    _devicePort->print("\nGetCGREG Response: ");
-    _devicePort->print(responseBuffer);
+    SendCmdAndWait(full_cmd, wholeResponseBuffer, responseLen, false, false);  //send command to the modem 
 
+    int stateBufferLen = 16; //state only length
+    int startIndex = 0; //index to start from
+    int endIndex = 11; //index to end on
+    char stateBuffer[stateBufferLen]; //buffer for state only char array
+
+    trimChar(wholeResponseBuffer, stateBuffer, stateBufferLen, startIndex, endIndex); //trim the char to convert it to more appropriate terms for checking
+
+    //comparing the state buffer to known responses to update cgreg enum
+    if (strcmp(stateBuffer, "+CGREG: 0,0") == 0)
+    {
+        cgreg = NotRegistered;
+    }
+    else if (strcmp(stateBuffer, "+CGREG: 0,1") == 0)
+    {
+        cgreg = HomeRegistered;
+    }
+    else if (strcmp(stateBuffer, "+CGREG: 0,2") == 0)
+    {
+        cgreg = Searching;
+    }
+    else if (strcmp(stateBuffer, "+CGREG: 0,3") == 0)
+    {
+        cgreg = RegistrationDenied;
+    }
+    else if (strcmp(stateBuffer, "+CGREG: 0,4") == 0)
+    {
+        cgreg = Unknown;
+    }
+    else if (strcmp(stateBuffer, "+CGREG: 0,5") == 0) //rare
+    {
+        cgreg = Roaming;
+    }
+}
+
+
+
+CGREG Modem::GetCGREG()
+{
+    RefreshCGREG();
+    return cgreg;
 }
 
 void Modem::SetCGATT(int val) //val can only be 1 or 0, 1 attaches, 0 detaches
@@ -275,7 +321,7 @@ void Modem::SetCIFSR()
 
     strcpy(full_cmd, at_cmd); //copy at command to command buffer
 
-    int responseLen = 3; //two characters and one null character
+    int responseLen = 16; //two characters and one null character
     char responseBuffer[responseLen];
 
     SendCmdAndWait(full_cmd, responseBuffer, responseLen, false, false);  //send command to the modem 
@@ -578,6 +624,27 @@ void Modem::trimChar(char inputBuffer[], char outputBuffer[], int outputBufferSi
     }
     else if (startIndex == 0 && endIndex > 0) //means end must get trimmed
     {
+        for (int i = 0; i < strlen(inputBuffer); i++)
+        {
+            tempBuffer[tempIndex] = inputBuffer[i]; //setting value of new char array
+
+            //increase index
+            tempIndex++;
+            if (tempIndex == outputBufferSize - 1) //means output buffer is full
+            {
+                break;
+            }
+            if (tempIndex == endIndex) //reached the index at which to stop at
+            {
+                break;
+            }
+
+        }
+        tempBuffer[tempIndex] = '\0'; //add null character to end of array when at end of input or reached output size
+
+        strcpy(outputBuffer, tempBuffer);
+
+
         return;
     }
     else if (startIndex > 0  && endIndex == 0) //means beginning must get trimmed
