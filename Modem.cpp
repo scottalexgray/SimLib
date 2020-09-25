@@ -3,7 +3,7 @@
     Created by Scott Alexander Gray - 2020
 */
 #include "Modem.h"
-#include <Wire.h>
+
 #include <Arduino.h>
 #include <string>
 
@@ -41,10 +41,7 @@ void Modem::SetSimSettings(const char* apn, const char* pin)
 
 void Modem::ConnectGPRSBlocking()
 {
-    //SendCmdAndWait("AT+CSTT=\"internet\"");
-    //SendCmdAndWait("AT+CSTT?");
-
-    // Disabled to test SendCmdAndWait
+        
     SetCFUN(1); //set the functionality of the modem
     SetCSTT(APN); //set the sim access point name
     SetCPIN(PIN); //set the sim pin
@@ -57,12 +54,14 @@ void Modem::ConnectGPRSBlocking()
     }
     _devicePort->print("Done");
 
-
+    
     
     SetCGATT(1); //attach to gsm network    
     SetCGACT(1, 1);    
     SetCIICR();
     SetCIFSR();
+
+    SetSAPBR(); //Bearer Registration
     
 
 }
@@ -84,7 +83,7 @@ void Modem::SetCFUN(int val)
     //_devicePort->print("Command to be sent:\n");
     //_devicePort->print(full_cmd);
 
-    int responseLen = 3; //two characters and one null character
+    int responseLen = 6; //two characters and one null character
     char responseBuffer[responseLen];
 
     SendCmdAndWait(full_cmd, responseBuffer, responseLen, false, false);  //send command to the modem 
@@ -104,7 +103,7 @@ void Modem::SetCSTT(const char* apn)
     strcpy(full_cmd, at_cmd); //copy the base command to the buffer    
     strcat(full_cmd, apn); //append the valChar to the cmd buffer    
 
-    int responseLen = 3; //two characters and one null character
+    int responseLen = 6; //two characters and one null character
     char responseBuffer[responseLen];
 
     SendCmdAndWait(full_cmd, responseBuffer, responseLen, false, false);  //send command to the modem 
@@ -129,7 +128,7 @@ void Modem::SetCPIN(const char* pin)
     strcpy(full_cmd, at_cmd); //copy the base command to the buffer
     strcat(full_cmd, pin); //append the valChar to the cmd buffer
 
-    int responseLen = 3; //two characters and one null character
+    int responseLen = 6; //two characters and one null character
     char responseBuffer[responseLen];
 
     SendCmdAndWait(full_cmd, responseBuffer, responseLen, false, false);  //send command to the modem 
@@ -223,7 +222,7 @@ void Modem::SetCGATT(int val) //val can only be 1 or 0, 1 attaches, 0 detaches
     strcpy(full_cmd, at_cmd); //copy the base command to the buffer
     strcat(full_cmd, valChar); //append the valChar to the cmd buffer
 
-    int responseLen = 3; //two characters and one null character
+    int responseLen = 6; //two characters and one null character
     char responseBuffer[responseLen];
 
     SendCmdAndWait(full_cmd, responseBuffer, responseLen, false, false);  //send command to the modem 
@@ -269,7 +268,7 @@ void Modem::SetCGACT(int state, int cid)
     strcat(full_cmd, ","); //append this to command buffer
     strcat(full_cmd, cidChar); //append this to command buffer
 
-    int responseLen = 3; //two characters and one null character
+    int responseLen = 6; //two characters and one null character
     char responseBuffer[responseLen];
 
     SendCmdAndWait(full_cmd, responseBuffer, responseLen, false, false);  //send command to the modem 
@@ -286,7 +285,7 @@ void Modem::GetCEER()
 
     strcpy(full_cmd, at_cmd); //copy at command to command buffer
 
-    int responseLen = 3; //two characters and one null character
+    int responseLen = 6; //two characters and one null character
     char responseBuffer[responseLen];
 
     SendCmdAndWait(full_cmd, responseBuffer, responseLen, false, false);  //send command to the modem 
@@ -303,7 +302,7 @@ void Modem::SetCIICR()
 
     strcpy(full_cmd, at_cmd); //copy at command to command buffer
 
-    int responseLen = 3; //two characters and one null character
+    int responseLen = 32; //two characters and one null character
     char responseBuffer[responseLen];
 
     SendCmdAndWait(full_cmd, responseBuffer, responseLen, false, false);  //send command to the modem 
@@ -321,12 +320,104 @@ void Modem::SetCIFSR()
 
     strcpy(full_cmd, at_cmd); //copy at command to command buffer
 
-    int responseLen = 16; //two characters and one null character
+    int responseLen = 32; //two characters and one null character
     char responseBuffer[responseLen];
 
     SendCmdAndWait(full_cmd, responseBuffer, responseLen, false, false);  //send command to the modem 
     _devicePort->print("\nSetCIFSR Response: ");
     _devicePort->print(responseBuffer);
+}
+
+void Modem::SetSAPBR()
+{
+    
+    SAPBR_Contype();//set contype
+    SAPBR_APN();//APN
+    SAPBR_Enable();//   
+
+    SAPBR_Test();// Test Bearer
+    
+
+
+}
+
+void Modem::SAPBR_Contype()
+{
+    int bufferSize = 32;
+    char* full_cmd = new char[bufferSize];//full command buffer
+    int responseLen = 6; //length od return buffer. two characters and one null character
+
+    //contype
+    full_cmd = new char[bufferSize];//clearing full command buffer
+
+    const char* at_cmd = "AT+SAPBR=3,1,\"contype\",\"GPRS\""; //AT command
+
+    strcpy(full_cmd, at_cmd); //copy at command to command buffer
+
+
+    char responseBufferContype[responseLen];
+
+    SendCmdAndWait(full_cmd, responseBufferContype, responseLen, false, false);  //send command to the modem 
+
+    _devicePort->print("\nSAPBR contype: ");
+    _devicePort->print(responseBufferContype);
+}
+
+void Modem::SAPBR_APN()
+{
+    int bufferSize = 32;
+    char* full_cmd = new char[bufferSize];//full command buffer
+    int responseLen = 6; //length od return buffer. two characters and one null character
+
+    const char* at_cmd = "AT+SAPBR=3,1,\"APN\",\""; //AT command
+
+    strcpy(full_cmd, at_cmd); //copy at command to command buffer
+    strcat(full_cmd, APN); //append this to command buffer
+    strcat(full_cmd, "\""); //append this to command buffer
+
+    char responseBufferAPN[responseLen];
+
+    SendCmdAndWait(full_cmd, responseBufferAPN, responseLen, false, false);  //send command to the modem    
+
+    _devicePort->print("\nSAPBR APN: ");
+    _devicePort->print(responseBufferAPN);
+}
+
+void Modem::SAPBR_Enable()
+{
+    int bufferSize = 32;
+    char* full_cmd = new char[bufferSize];//full command buffer
+    int responseLen = 6; //length od return buffer. two characters and one null character
+
+    const char* at_cmd = "AT+SAPBR=1,1"; //AT command
+
+    strcpy(full_cmd, at_cmd); //copy at command to command buffer
+
+    char responseBufferEnable[responseLen];
+
+    SendCmdAndWait(full_cmd, responseBufferEnable, responseLen, false, false);  //send command to the modem 
+
+    _devicePort->print("\nSAPBR enable: ");
+    _devicePort->print(responseBufferEnable);
+}
+
+void Modem::SAPBR_Test()
+{
+    int bufferSize = 32;
+    char* full_cmd = new char[bufferSize];//full command buffer
+    int responseLen = 6; //length od return buffer. two characters and one null character
+
+    const char* at_cmd = "AT+SAPBR=2,1"; //AT command
+
+    strcpy(full_cmd, at_cmd); //copy at command to command buffer
+
+    char responseBufferTestBearer[16];
+
+    SendCmdAndWait(full_cmd, responseBufferTestBearer, responseLen, false, false);  //send command to the modem 
+
+
+    _devicePort->print("\nSAPBR Bearer Test: ");
+    _devicePort->print(responseBufferTestBearer);
 }
 
 void Modem::GetCOPS()
@@ -346,7 +437,9 @@ void Modem::GetCOPS()
     _devicePort->print(responseBuffer);
 }
 
-void Modem::GetCSQ()
+
+
+int Modem::GetCSQ()
 {
     int bufferSize = 32; //length of buffer
     char* full_cmd = new char[bufferSize]; //create buffer for command to be sent
@@ -355,12 +448,24 @@ void Modem::GetCSQ()
 
     strcpy(full_cmd, at_cmd); //copy the base command to the buffer    
 
-    int responseLen = 8; //two characters and one null character
+    int responseLen = 16; //two characters and one null character
     char responseBuffer[responseLen];
 
     SendCmdAndWait(full_cmd, responseBuffer, responseLen, false, false);  //send command to the modem 
-    _devicePort->print("\nGetCSQ Response: ");
-    _devicePort->print(responseBuffer);
+
+    int stateBufferLen = 16; //state only length
+    int startIndex = 6; //index to start from
+    int endIndex = 7; //index to end on
+    char stateBuffer[stateBufferLen]; //buffer for state only char array
+
+    trimChar(responseBuffer, stateBuffer, stateBufferLen, startIndex, endIndex); //trim the char to convert it to more appropriate terms for checking
+    
+
+    int retVal = atoi(stateBuffer); //convert char array to int   
+
+    
+    return retVal;
+
 }
 
 
@@ -432,7 +537,7 @@ void Modem::Init()
 {
     RDY = false;
     // I2C for SIM800 (to keep it running when powered from battery)//not sure if nessesary
-    TwoWire I2CPower = TwoWire(0);
+    //TwoWire I2CPower = TwoWire(0);
 
     //_devicePort->begin(baudRate);
 
@@ -677,6 +782,28 @@ void Modem::trimChar(char inputBuffer[], char outputBuffer[], int outputBufferSi
     }
     else if (startIndex > 0 && endIndex > 0) //means some of the end and some of the beginnning must get trimmed
     {
+        for (int i = startIndex; i < strlen(inputBuffer); i++)
+        {
+            tempBuffer[tempIndex] = inputBuffer[i]; //setting value of new char array
+
+            //increase index
+            tempIndex++;
+            if (tempIndex == outputBufferSize - 1) //means output buffer is full
+            {
+                break;
+            }
+            if (i == endIndex) //reached the index at which to stop at
+            {
+                break;
+            }
+
+        }
+
+        tempBuffer[tempIndex] = '\0'; //add null character to end of array when at end of input or reached output size
+
+        strcpy(outputBuffer, tempBuffer); //copy the chars in tempBuffer to outputBuffer
+
+
         return;
     }
 }

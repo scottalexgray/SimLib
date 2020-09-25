@@ -47,13 +47,12 @@ public:
 	void ConnectGPRSBlocking(); //connect to the GPRS Network (IP INITIAL -> IP STATUS)
 
 	//Other Commands useful for debugging
-	void GetCSQ();//AT+CSQ //gets signal strength
+	int GetCSQ();//AT+CSQ //gets signal strength
 
 	enum CGREG GetCGREG(); //AT+CGREG? //is the sim registered on the network?
-
-	void SetCGATT(int val); //AT+CGATT=val //Attach to network 
-
 	enum CIPSTATUS GetCIPSTATUS();
+
+	//HTTP stuff 
 
 
 private:
@@ -70,9 +69,7 @@ private:
 
 	void GetCPIN(); //AT+CPIN? //gets the pin status of the simcard(does it still need a pin)
 
-		
-
-	
+	void SetCGATT(int val); //AT+CGATT=val //Attach to network	
 
 	void SetCGDCONT(int PDPNum, const char* ipMode, const char* apn);//AT+CGDCONT=PDPNum,ipMode,APN //Set the PDP context
 
@@ -106,16 +103,22 @@ private:
 
 	//state = IP STATUS, can now register at a bearer and then do HTTP connection
 
-	
+	void SetSAPBR();
+	void SAPBR_Contype();
+	void SAPBR_APN();
+	void SAPBR_Enable();
+	void SAPBR_Test();
+
+
 	
 	//Other Commands useful for debugging
 
 	void GetCOPS();//AT+COPS? //get network info
-
+	
 	
 	void RefreshCGREG();
 	void RefreshCIPSTATUS();//AT+CIPSTATUS //Query current connection status and status of modem
-	
+	void RefreshCSQ();
 
 
 	void WaitForResponse(int bufferLen, char response[], unsigned long timeoutTime); //wait for a response from modem. At the moment only used for startup
@@ -132,11 +135,7 @@ private:
 
 
 	void SendCmdAndWait(const char* cmd, char returnBuffer[], int returnBufferSize, bool removeOKFromResponse, bool printResponse); //send command, wait for response and print response
-
-	
-
-
-
+		
 	
 	bool RDY = false;
 
@@ -145,13 +144,13 @@ private:
 
 	const char* APN;
 	const char* PIN;
-	HardwareSerial *_modemPort;
+	HardwareSerial*_modemPort;
     HardwareSerial* _devicePort;
 
 
 	CGREG cgreg;
 	CIPSTATUS cipstatus;
 
-
+	int csq;
 
 };
